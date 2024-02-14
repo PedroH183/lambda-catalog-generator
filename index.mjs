@@ -1,26 +1,24 @@
 import {S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 
-const client = new S3Client({region: "us-east-1"});
+const client = new S3Client({region: "us-east-2"});
 
 export const handler = async (event) => {
   try {
     for(const record of event.Records) {
       console.log("Iniciando processamento de mensagem", record)
       
-      const rawBody = JSON.parse(record.body)
-      const body = JSON.parse(rawBody.Message)
-      const ownerId = body.ownerId;
+      const rawBody = JSON.parse(record.body);
       
       try {
-        var bucketName = "anotaai-catalog-marketplace"
-        var filename = `${ownerId}-catalog.json`
+        var bucketName = "anotaai-catalog-marketplace-tester"
+        var filename = `${rawBody.ownerId}-catalog.json`
         const catalog = await getS3Object(bucketName, filename);
         const catalogData = JSON.parse(catalog)
       
-        if(body.type == "produto") {
-          updateOrAddItem(catalogData.products, body)
+        if(rawBody.type == "produto") {
+          updateOrAddItem(catalogData.products, rawBody)
         } else {
-          updateOrAddItem(catalogData.categories, body)
+          updateOrAddItem(catalogData.categories, rawBody)
         }
         
         await putS3Object(bucketName, filename, JSON.stringify(catalogData));
@@ -28,10 +26,10 @@ export const handler = async (event) => {
       } catch (error) {
         if(error.message == "Error getting object from bucket") {
           const newCatalog = { products: [], categories: [] }
-          if(body.type == "produto") {
-            newCatalog.products.push(body);
+          if(rawBody.type == "produto") {
+            newCatalog.products.push(rawBody);
           } else {
-            newCatalog.categories.push(body);
+            newCatalog.categories.push(rawBody);
           }
           
           await putS3Object(bucketName, filename, JSON.stringify(newCatalog))
@@ -98,9 +96,9 @@ async function putS3Object(dstBucket, dstKey, content) {
 
 function streamToString(stream) {
     return new Promise((resolve, reject) => {
-        const chunks = [];
-        stream.on('data', (chunk) => chunks.push(chunk));
-        stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
-        stream.on('error', reject);
+      const chunks = [];
+      stream.on('data', (chunk) => chunks.push(chunk));
+      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+      stream.on('error', reject);
     });
 }
