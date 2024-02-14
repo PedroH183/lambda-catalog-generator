@@ -1,6 +1,6 @@
 import {S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 
-const client = new S3Client({region: "us-east-2"});
+const client = new S3Client({region: ""}); // Coloque sua região da AWS aqui !
 
 export const handler = async (event) => {
   try {
@@ -10,8 +10,8 @@ export const handler = async (event) => {
       const rawBody = JSON.parse(record.body);
       
       try {
-        var bucketName = "anotaai-catalog-marketplace-tester"
-        var filename = `${rawBody.ownerId}-catalog.json`
+        var bucketName = "" // Mude para o nome do seu Bucket
+        var filename = `${rawBody.ownerId}-catalog.json` // Altere o nome 
         const catalog = await getS3Object(bucketName, filename);
         const catalogData = JSON.parse(catalog)
       
@@ -56,8 +56,6 @@ async function getS3Object(bucket, key) {
 
     try {
       const response = await client.send(getCommand);
-  
-      // Lendo o stream e convertendo para string
       return streamToString(response.Body);
 
     } catch (error) {
