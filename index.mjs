@@ -1,24 +1,24 @@
 import {S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 
-const client = new S3Client({region: ""}); // Coloque sua região da AWS aqui !
+const client = new S3Client({region: "us-east-2"});
 
 export const handler = async (event) => {
   try {
     for(const record of event.Records) {
       console.log("Iniciando processamento de mensagem", record)
       
-      const rawBody = JSON.parse(record.body);
+      const rawBody = JSON.parse(record.body); // minha mensagem 
       
       try {
-        var bucketName = "" // Mude para o nome do seu Bucket
-        var filename = `${rawBody.ownerId}-catalog.json` // Altere o nome 
+        var bucketName = "anotaai-catalog-marketplace-tester"
+        var filename = `${rawBody.ownerId}-catalog.json`
         const catalog = await getS3Object(bucketName, filename);
-        const catalogData = JSON.parse(catalog)
+        const catalogData = JSON.parse(catalog) // todos os dados de um ownerID
       
         if(rawBody.type == "product") {
-          updateOrAddItem(catalogData.products, rawBody)
+          updateAddDeletingItem(catalogData.products, rawBody)
         } else {
-          updateOrAddItem(catalogData.categories, rawBody)
+          updateAddDeletingItem(catalogData.categories, rawBody)
         }
         
         await putS3Object(bucketName, filename, JSON.stringify(catalogData));
@@ -56,6 +56,7 @@ async function getS3Object(bucket, key) {
 
     try {
       const response = await client.send(getCommand);
+      // Lendo o stream e convertendo para string
       return streamToString(response.Body);
 
     } catch (error) {
@@ -63,11 +64,22 @@ async function getS3Object(bucket, key) {
     }
 }
 
-function updateOrAddItem(catalog, newItem){
+function updateAddDeletingItem(catalog, newItem){
   const index = catalog.findIndex(item => item.id === newItem.id)
+  
   if(index !== -1){
+    // achou e vai adicionar o item no objeto
+    
+    if( newItem["keyToDelete"] == true ){ // if not exist is undefined
+      // vou remover o item do catalogo 
+      console.log("Deletou um Dado com sucesso !")
+      catalog.splice(index, 1);
+      return;
+    }
+    
     catalog[index] = {...catalog[index], ...newItem}
   } else {
+    // não achou e vai adicionar
     catalog.push(newItem)
   }
 }
@@ -90,7 +102,6 @@ async function putS3Object(dstBucket, dstKey, content) {
       return;
     }
 }
-
 
 function streamToString(stream) {
     return new Promise((resolve, reject) => {
